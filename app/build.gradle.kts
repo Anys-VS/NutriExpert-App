@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "cl.duoc.agronutri"
+    namespace = "cl.duoc.nutriexpert"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "cl.duoc.agronutri"
+        applicationId = "cl.duoc.nutriexpert"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
