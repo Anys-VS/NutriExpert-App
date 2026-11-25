@@ -11,6 +11,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import cl.duoc.nutriexpert.data.ClimaCache
+import cl.duoc.nutriexpert.data.ClimaRepository
+import cl.duoc.nutriexpert.data.remote.RetrofitInstance
 import cl.duoc.nutriexpert.model.HomeUiState
 import cl.duoc.nutriexpert.model.RegistroResumen
 import cl.duoc.nutriexpert.navigation.NavigationEvent
@@ -25,6 +28,7 @@ import cl.duoc.nutriexpert.ui.RegistroScreen
 import cl.duoc.nutriexpert.ui.SplashScreen
 import cl.duoc.nutriexpert.ui.theme.NutriExpertTheme
 import cl.duoc.nutriexpert.viewmodels.AuthViewModel
+import cl.duoc.nutriexpert.viewmodels.ClimaViewModel
 import cl.duoc.nutriexpert.viewmodels.MainViewModel
 import cl.duoc.nutriexpert.viewmodels.RegistrosViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -38,6 +42,10 @@ class MainActivity : ComponentActivity() {
                 val viewModel: MainViewModel = viewModel()
                 val authViewModel: AuthViewModel = viewModel()
                 val registrosViewModel: RegistrosViewModel = viewModel()
+                // Se crea con su repositorio: Retrofit (internet) + caché del teléfono.
+                val climaViewModel: ClimaViewModel = viewModel {
+                    ClimaViewModel(ClimaRepository(RetrofitInstance.climaApi, ClimaCache(applicationContext)))
+                }
                 val navController = rememberNavController()
 
                 val sesion by authViewModel.sesion.collectAsState()
@@ -96,6 +104,13 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Screen.Home.route) {
+                        val clima by climaViewModel.uiState.collectAsState()
+                        // Al volver la señal se consulta de nuevo si no había datos o eran los guardados.
+                        LaunchedEffect(conectado) {
+                            if (conectado && (clima.clima == null || clima.desdeCache)) {
+                                climaViewModel.cargarClima()
+                            }
+                        }
                         HomeScreen(
                             state = HomeUiState(
                                 nombre = sesion?.nombre.orEmpty(),
@@ -116,6 +131,8 @@ class MainActivity : ComponentActivity() {
                             onNuevoRegistro = { viewModel.navigateTo(Screen.CalculoNutricional) },
                             onVerHistorial = { viewModel.navigateTo(Screen.Historial) },
                             onSincronizar = { registrosViewModel.sincronizar() },
+                            clima = clima,
+                            onReintentarClima = { climaViewModel.cargarClima() },
                             onCerrarSesion = {
                                 authViewModel.cerrarSesion()
                                 // A la bienvenida y no al login: desde ahí "atrás" cierra la app.

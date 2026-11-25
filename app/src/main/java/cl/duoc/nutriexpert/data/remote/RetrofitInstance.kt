@@ -19,6 +19,9 @@ object RetrofitInstance {
     private const val URL_REGISTROS = "http://$HOST:8082/"
     private const val URL_USUARIOS = "http://$HOST:8083/"
 
+    // API externa (no es nuestra): clima de Open-Meteo, por HTTPS y sin clave.
+    private const val URL_CLIMA = "https://api.open-meteo.com/"
+
     private val gson = Gson()
 
     // Tiempos cortos: si no hay señal o el servidor está apagado, la app cae rápido a Room.
@@ -43,6 +46,7 @@ object RetrofitInstance {
     val catalogoApi: CatalogoApi by lazy { crear(URL_CATALOGO).create(CatalogoApi::class.java) }
     val registrosApi: RegistrosApi by lazy { crear(URL_REGISTROS).create(RegistrosApi::class.java) }
     val usuariosApi: UsuariosApi by lazy { crear(URL_USUARIOS).create(UsuariosApi::class.java) }
+    val climaApi: ClimaApiService by lazy { crear(URL_CLIMA).create(ClimaApiService::class.java) }
 
     // Lee { "error": "..." } del cuerpo de una respuesta fallida.
     fun mensajeDeError(cuerpo: ResponseBody?): String? = try {
