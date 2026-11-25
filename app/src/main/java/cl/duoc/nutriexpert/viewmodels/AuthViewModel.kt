@@ -6,8 +6,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cl.duoc.nutriexpert.data.AppDatabase
 import cl.duoc.nutriexpert.data.AuthRepository
+import cl.duoc.nutriexpert.data.ResultadoLogin
 import cl.duoc.nutriexpert.data.ResultadoRegistro
 import cl.duoc.nutriexpert.data.Usuario
+import cl.duoc.nutriexpert.data.remote.Conectividad
+import cl.duoc.nutriexpert.data.remote.RetrofitInstance
 import cl.duoc.nutriexpert.model.LoginUiState
 import cl.duoc.nutriexpert.model.RegistroUiState
 import cl.duoc.nutriexpert.model.SesionUsuario
@@ -19,7 +22,12 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repo = AuthRepository(AppDatabase.obtener(application).usuarioDao())
+    // Login y registro contra ms-usuarios, con Room como respaldo sin señal.
+    private val repo = AuthRepository(
+        dao = AppDatabase.obtener(application).usuarioDao(),
+        api = RetrofitInstance.usuariosApi,
+        conectividad = Conectividad(application)
+    )
 
     private val _login = MutableStateFlow(LoginUiState())
     val login: StateFlow<LoginUiState> = _login.asStateFlow()
@@ -53,7 +61,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         _login.update { it.copy(cargando = true, errorGeneral = null) }
         viewModelScope.launch {
             val s = _login.value
-            val usuario = try {
+            val resultado = try {
                 repo.login(s.correo, s.clave)
             } catch (e: Exception) {
                 _login.update {
@@ -61,13 +69,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 return@launch
             }
-            if (usuario != null) {
-                abrirSesion(usuario)
-                _login.value = LoginUiState()
-                onExito()
-            } else {
+            when (resultado) {
+                is ResultadoLogin.Ok -> {
+                    abrirSesion(resultado.usuario)
+                    _login.value = LoginUiState()
+                    onExito()
+                }
                 // Mensaje genérico: no revela si el correo existe.
-                _login.update {
+                ResultadoLogin.CredencialesInvalidas -> _login.update {
                     it.copy(cargando = false, clave = "", errorGeneral = "Correo o contraseña incorrectos")
                 }
             }
@@ -135,22 +144,24 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val s = _registro.value
             try {
-                when (repo.registrar(s.nombre, s.correo, s.rol!!, s.clave)) {
-                    ResultadoRegistro.Ok -> {
-                        // Cuenta creada: se inicia sesión de inmediato.
-                        val usuario = repo.login(s.correo, s.clave)
-                        if (usuario != null) {
-                            abrirSesion(usuario)
-                            _registro.value = RegistroUiState()
-                            onExito()
-                        } else {
-                            _registro.update {
-                                it.copy(cargando = false, errorGeneral = "Cuenta creada. Ahora inicia sesión.")
-                            }
-                        }
+                when (val resultado = repo.registrar(s.nombre, s.correo, s.rol!!, s.clave)) {
+                    is ResultadoRegistro.Ok -> {
+                        // Cuenta creada en ms-usuarios: se inicia sesión de inmediato.
+                        abrirSesion(resultado.usuario)
+                        _registro.value = RegistroUiState()
+                        onExito()
                     }
                     ResultadoRegistro.CorreoExistente -> _registro.update {
                         it.copy(cargando = false, errorCorreo = "Este correo ya está registrado")
+                    }
+                    ResultadoRegistro.SinConexion -> _registro.update {
+                        it.copy(
+                            cargando = false,
+                            errorGeneral = "Para crear tu cuenta necesitas conexión a internet."
+                        )
+                    }
+                    is ResultadoRegistro.Error -> _registro.update {
+                        it.copy(cargando = false, errorGeneral = resultado.mensaje)
                     }
                 }
             } catch (e: Exception) {

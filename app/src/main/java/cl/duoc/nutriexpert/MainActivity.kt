@@ -42,6 +42,8 @@ class MainActivity : ComponentActivity() {
 
                 val sesion by authViewModel.sesion.collectAsState()
                 val todosLosRegistros by registrosViewModel.registros.collectAsState()
+                val conectado by registrosViewModel.conectado.collectAsState()
+                val sincronizando by registrosViewModel.sincronizando.collectAsState()
                 // Cada usuario ve solo sus registros.
                 val registros = todosLosRegistros.filter { it.usuarioId == sesion?.id }
 
@@ -99,6 +101,8 @@ class MainActivity : ComponentActivity() {
                                 nombre = sesion?.nombre.orEmpty(),
                                 rol = sesion?.rol.orEmpty(),
                                 pendientes = registros.count { !it.sincronizado },
+                                conectado = conectado,
+                                sincronizando = sincronizando,
                                 ultimosRegistros = registros.take(3).map {
                                     RegistroResumen(
                                         id = it.id,
@@ -111,6 +115,7 @@ class MainActivity : ComponentActivity() {
                             ),
                             onNuevoRegistro = { viewModel.navigateTo(Screen.CalculoNutricional) },
                             onVerHistorial = { viewModel.navigateTo(Screen.Historial) },
+                            onSincronizar = { registrosViewModel.sincronizar() },
                             onCerrarSesion = {
                                 authViewModel.cerrarSesion()
                                 // A la bienvenida y no al login: desde ahí "atrás" cierra la app.

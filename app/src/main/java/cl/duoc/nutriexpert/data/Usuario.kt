@@ -9,6 +9,7 @@ import androidx.room.PrimaryKey
     indices = [Index(value = ["correo"], unique = true)]
 )
 data class Usuario(
+    // Es el id que entrega ms-usuarios: el mismo usuarioId que se envía a ms-registros.
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val nombre: String,
     val correo: String,

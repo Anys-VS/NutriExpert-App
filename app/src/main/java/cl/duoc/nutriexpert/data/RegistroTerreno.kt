@@ -19,5 +19,6 @@ data class RegistroTerreno(
     val mgo: Double,
     val fotoUri: String,           // "" si no hay foto
     val creadoEn: Long,
-    val sincronizado: Boolean = false  // se enviará al servidor en una etapa futura
+    val sincronizado: Boolean = false, // true cuando ms-registros confirmó que lo guardó
+    val idServidor: Long? = null       // id que entregó ms-registros
 )
