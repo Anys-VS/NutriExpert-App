@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Los microservicios corren en HTTP (sin TLS). Android bloquea HTTP por defecto,
+  así que se permite SOLO hacia estas direcciones. El resto (Open-Meteo, etc.) sigue exigiendo HTTPS.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Emulador de Android: 10.0.2.2 es el localhost del computador -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- CAMBIAR por la Elastic IP de la instancia EC2 (la misma de RetrofitInstance.HOST) -->
+        <domain includeSubdomains="false">203.0.113.10</domain>
+    </domain-config>
+</network-security-config>

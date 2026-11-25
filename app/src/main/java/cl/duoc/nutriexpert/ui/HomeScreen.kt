@@ -1,6 +1,9 @@
 package cl.duoc.nutriexpert.ui
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,12 +13,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,7 +44,8 @@ fun HomeScreen(
     state: HomeUiState,
     onNuevoRegistro: () -> Unit,
     onVerHistorial: (() -> Unit)? = null,
-    onCerrarSesion: (() -> Unit)? = null
+    onCerrarSesion: (() -> Unit)? = null,
+    onSincronizar: (() -> Unit)? = null
 ) {
     Scaffold(
         containerColor = Color.White,
@@ -57,7 +65,7 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
-                    Saludo(state = state, onCerrarSesion = onCerrarSesion)
+                    Saludo(state = state, onCerrarSesion = onCerrarSesion, onSincronizar = onSincronizar)
                 }
                 item {
                     Column(
@@ -103,7 +111,11 @@ fun HomeScreen(
 }
 
 @Composable
-private fun Saludo(state: HomeUiState, onCerrarSesion: (() -> Unit)?) {
+private fun Saludo(
+    state: HomeUiState,
+    onCerrarSesion: (() -> Unit)?,
+    onSincronizar: (() -> Unit)?
+) {
     Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -125,9 +137,45 @@ private fun Saludo(state: HomeUiState, onCerrarSesion: (() -> Unit)?) {
             fontSize = 15.sp
         )
         Spacer(Modifier.height(12.dp))
-        // La app trabaja offline: todo se guarda en el teléfono y se sincroniza en una etapa futura.
-        ChipSinConexion(texto = "Sin conexión · ${textoPendientes(state.pendientes)}")
+        // Todo se guarda primero en el teléfono; con señal se envía solo a ms-registros.
+        if (state.conectado) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ChipEnLinea(
+                    texto = if (state.sincronizando) "Sincronizando…"
+                    else "En línea · ${textoPendientes(state.pendientes)}"
+                )
+                if (state.pendientes > 0 && !state.sincronizando && onSincronizar != null) {
+                    TextButton(onClick = onSincronizar) {
+                        Text("Sincronizar", color = ColoresMarca.Verde, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        } else {
+            ChipSinConexion(texto = "Sin conexión · ${textoPendientes(state.pendientes)}")
+        }
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun ChipEnLinea(texto: String) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = ColoresMarca.HojaRelleno,
+        border = BorderStroke(1.dp, ColoresMarca.Verde)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .background(ColoresMarca.Verde, CircleShape)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(texto, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = ColoresMarca.Titulo)
+        }
     }
 }
 

@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -60,7 +61,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import cl.duoc.nutriexpert.domain.DatosEjemplo
+import cl.duoc.nutriexpert.data.OrigenCatalogo
 import cl.duoc.nutriexpert.domain.Nutrientes
 import cl.duoc.nutriexpert.viewmodels.CalculoNutricionalViewModel
 import java.util.Locale
@@ -135,8 +136,10 @@ fun CalculoNutricionalScreen(
         if (estado.fotoUri.isBlank()) null else cargarFoto(contexto, estado.fotoUri)
     }
 
-    // TODO confirmar con el cliente: lista de cultivos (viene del catalogo)
-    val cultivos = DatosEjemplo.cultivos.map { it.nombre }
+    // Lista de cultivos desde ms-catalogo (con respaldo local si no hay señal).
+    val listaCultivos by viewModel.cultivos.collectAsState()
+    val cultivos = listaCultivos.map { it.nombre }
+    val origenCatalogo by viewModel.origenCatalogo.collectAsState()
 
     // Al aparecer el resultado, la pantalla baja sola hasta la tarjeta.
     val scrollState = rememberScrollState()
@@ -193,7 +196,11 @@ fun CalculoNutricionalScreen(
                 }
 
                 Text("Cultivo", color = ColoresMarca.Subtitulo, fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Con scroll horizontal: el catálogo del servidor puede traer más cultivos.
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     cultivos.forEach { cultivo ->
                         FilterChip(
                             selected = estado.cultivo == cultivo,
@@ -208,6 +215,9 @@ fun CalculoNutricionalScreen(
                 }
                 estado.errores.cultivo?.let { mensaje ->
                     Text(mensaje, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
+                if (origenCatalogo == OrigenCatalogo.COPIA_LOCAL) {
+                    Text("Sin conexión: se usa la última lista de cultivos guardada", color = ColoresMarca.Subtitulo, fontSize = 12.sp)
                 }
 
                 CampoTexto(

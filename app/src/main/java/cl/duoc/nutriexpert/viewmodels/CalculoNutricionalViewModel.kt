@@ -6,8 +6,12 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cl.duoc.nutriexpert.data.AppDatabase
+import cl.duoc.nutriexpert.data.CatalogoRepository
+import cl.duoc.nutriexpert.data.OrigenCatalogo
 import cl.duoc.nutriexpert.data.RegistroTerreno
 import cl.duoc.nutriexpert.domain.CalculoNutricional
+import cl.duoc.nutriexpert.data.remote.RetrofitInstance
+import cl.duoc.nutriexpert.domain.CultivoReferencia
 import cl.duoc.nutriexpert.domain.DatosEjemplo
 import cl.duoc.nutriexpert.model.CalculoNutricionalErrores
 import cl.duoc.nutriexpert.model.CalculoNutricionalUiState
@@ -23,7 +27,24 @@ class CalculoNutricionalViewModel(application: Application) : AndroidViewModel(a
     private val _estado = MutableStateFlow(CalculoNutricionalUiState())
     val estado: StateFlow<CalculoNutricionalUiState> = _estado.asStateFlow()
 
-    private val dao = AppDatabase.obtener(application).registroTerrenoDao()
+    private val db = AppDatabase.obtener(application)
+    private val dao = db.registroTerrenoDao()
+    private val catalogo = CatalogoRepository(db.cultivoDao(), RetrofitInstance.catalogoApi)
+
+    // Cultivos de ms-catalogo (o su copia en Room). Mientras carga se muestran los de ejemplo.
+    private val _cultivos = MutableStateFlow(DatosEjemplo.cultivos)
+    val cultivos: StateFlow<List<CultivoReferencia>> = _cultivos.asStateFlow()
+
+    private val _origenCatalogo = MutableStateFlow(OrigenCatalogo.DATOS_EJEMPLO)
+    val origenCatalogo: StateFlow<OrigenCatalogo> = _origenCatalogo.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val resultado = catalogo.obtener()
+            _cultivos.value = resultado.cultivos
+            _origenCatalogo.value = resultado.origen
+        }
+    }
 
     fun onCultivoChange(valor: String) {
         _estado.update {
@@ -79,7 +100,7 @@ class CalculoNutricionalViewModel(application: Application) : AndroidViewModel(a
     fun calcular() {
         if (_estado.value.calculando || !validar()) return
         val actual = _estado.value
-        val cultivo = DatosEjemplo.buscar(actual.cultivo) ?: return
+        val cultivo = _cultivos.value.find { it.nombre == actual.cultivo } ?: return
         val meta = actual.metaRendimiento.replace(',', '.').toDouble()
         val eficiencia = actual.eficienciaRiego.replace(',', '.').toDouble()
 
@@ -92,6 +113,7 @@ class CalculoNutricionalViewModel(application: Application) : AndroidViewModel(a
     }
 
     // Guarda en Room el registro con su resultado. Solo se puede después de calcular.
+    // Queda "Pendiente"; RegistrosViewModel lo envía a ms-registros apenas haya señal.
     fun guardar(usuarioId: Long, onGuardado: () -> Unit) {
         val actual = _estado.value
         val resultado = actual.resultado ?: return
