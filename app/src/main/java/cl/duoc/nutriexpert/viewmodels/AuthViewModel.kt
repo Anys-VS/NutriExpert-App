@@ -49,9 +49,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun onLoginErrorMostrado() = _login.update { it.copy(errorGeneral = null) }
 
     fun validarLogin(): Boolean {
-        val s = _login.value
-        val errorCorreo = validarCorreo(s.correo)
-        val errorClave = if (s.clave.isBlank()) "Ingresa tu contraseña" else null
+        val formulario = _login.value
+        val errorCorreo = validarCorreo(formulario.correo)
+        val errorClave = if (formulario.clave.isBlank()) "Ingresa tu contraseña" else null
         _login.update { it.copy(errorCorreo = errorCorreo, errorClave = errorClave) }
         return errorCorreo == null && errorClave == null
     }
@@ -60,9 +60,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         if (_login.value.cargando || !validarLogin()) return
         _login.update { it.copy(cargando = true, errorGeneral = null) }
         viewModelScope.launch {
-            val s = _login.value
+            val formulario = _login.value
             val resultado = try {
-                repo.login(s.correo, s.clave)
+                repo.login(formulario.correo, formulario.clave)
             } catch (e: Exception) {
                 _login.update {
                     it.copy(cargando = false, errorGeneral = "No se pudo iniciar sesión. Intenta de nuevo.")
@@ -106,22 +106,22 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun onRegistroErrorMostrado() = _registro.update { it.copy(errorGeneral = null) }
 
     fun validarRegistro(): Boolean {
-        val s = _registro.value
-        val errorNombre = if (s.nombre.trim().length < 2) "Ingresa tu nombre (mínimo 2 letras)" else null
-        val errorCorreo = validarCorreo(s.correo)
-        val errorRol = if (s.rol == null) "Elige tu perfil" else null
+        val formulario = _registro.value
+        val errorNombre = if (formulario.nombre.trim().length < 2) "Ingresa tu nombre (mínimo 2 letras)" else null
+        val errorCorreo = validarCorreo(formulario.correo)
+        val errorRol = if (formulario.rol == null) "Elige tu perfil" else null
         val errorClave = when {
-            s.clave.length < 8 -> "Mínimo 8 caracteres"
-            s.clave.none { it.isLetter() } || s.clave.none { it.isDigit() } -> "Debe tener letras y números"
+            formulario.clave.length < 8 -> "Mínimo 8 caracteres"
+            formulario.clave.none { it.isLetter() } || formulario.clave.none { it.isDigit() } -> "Debe tener letras y números"
             else -> null
         }
         val errorConfirmar = when {
-            s.confirmarClave.isEmpty() -> "Repite tu contraseña"
-            s.confirmarClave != s.clave -> "Las contraseñas no coinciden"
+            formulario.confirmarClave.isEmpty() -> "Repite tu contraseña"
+            formulario.confirmarClave != formulario.clave -> "Las contraseñas no coinciden"
             else -> null
         }
         val errorConsentimiento =
-            if (!s.consentimiento) "Debes aceptar para crear tu cuenta" else null
+            if (!formulario.consentimiento) "Debes aceptar para crear tu cuenta" else null
 
         _registro.update {
             it.copy(
@@ -142,9 +142,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         if (_registro.value.cargando || !validarRegistro()) return
         _registro.update { it.copy(cargando = true, errorGeneral = null) }
         viewModelScope.launch {
-            val s = _registro.value
+            val formulario = _registro.value
             try {
-                when (val resultado = repo.registrar(s.nombre, s.correo, s.rol!!, s.clave)) {
+                when (val resultado = repo.registrar(formulario.nombre, formulario.correo, formulario.rol!!, formulario.clave)) {
                     is ResultadoRegistro.Ok -> {
                         // Cuenta creada en ms-usuarios: se inicia sesión de inmediato.
                         abrirSesion(resultado.usuario)

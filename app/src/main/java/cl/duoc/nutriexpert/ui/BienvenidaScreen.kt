@@ -100,14 +100,14 @@ fun BienvenidaScreen(
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(60.dp))
             IlustracionBienvenida(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(170.dp),
                 balanceo = balanceo
             )
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(72.dp))
 
             BotonPrincipal("Iniciar sesión", onClick = onIniciarSesion)
             Spacer(Modifier.height(12.dp))
