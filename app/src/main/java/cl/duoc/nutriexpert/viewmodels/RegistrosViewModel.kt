@@ -8,6 +8,8 @@ import cl.duoc.nutriexpert.data.RegistroTerreno
 import cl.duoc.nutriexpert.data.SincronizacionRepository
 import cl.duoc.nutriexpert.data.remote.Conectividad
 import cl.duoc.nutriexpert.data.remote.RetrofitInstance
+import cl.duoc.nutriexpert.domain.EdicionRegistro
+import cl.duoc.nutriexpert.domain.Nutrientes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -61,6 +63,32 @@ class RegistrosViewModel(application: Application) : AndroidViewModel(applicatio
                 _sincronizando.value = false
                 enCurso.unlock()
             }
+        }
+    }
+
+    // Guarda la edición en Room y queda "Pendiente". El collect de dao.observar() ve el
+    // cambio y llama a sincronizar(), que lo envía con PUT a ms-registros si hay señal.
+    fun actualizar(id: Long, lote: String, metaRendimiento: Double, eficienciaRiego: Double) {
+        viewModelScope.launch {
+            val actual = dao.buscar(id) ?: return@launch
+            val nutrientes = EdicionRegistro.recalcular(
+                anterior = Nutrientes(actual.n, actual.p2o5, actual.k2o, actual.cao, actual.mgo),
+                metaAnterior = actual.metaRendimiento,
+                eficienciaAnterior = actual.eficienciaRiego,
+                metaNueva = metaRendimiento,
+                eficienciaNueva = eficienciaRiego
+            )
+            dao.actualizar(
+                id = id,
+                lote = lote.trim(),
+                meta = metaRendimiento,
+                eficiencia = eficienciaRiego,
+                n = nutrientes.n,
+                p2o5 = nutrientes.p2o5,
+                k2o = nutrientes.k2o,
+                cao = nutrientes.cao,
+                mgo = nutrientes.mgo
+            )
         }
     }
 

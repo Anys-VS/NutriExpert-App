@@ -20,6 +20,17 @@ interface RegistroTerrenoDao {
     @Query("UPDATE registros_terreno SET sincronizado = 1, idServidor = :idServidor WHERE id = :id")
     suspend fun marcarSincronizado(id: Long, idServidor: Long?)
 
+    // Edición: cambia los datos y lo deja pendiente. Conserva idServidor para que
+    // la sincronización sepa que debe actualizarlo (PUT) y no crear otro (POST).
+    @Query(
+        "UPDATE registros_terreno SET lote = :lote, metaRendimiento = :meta, eficienciaRiego = :eficiencia, " +
+            "n = :n, p2o5 = :p2o5, k2o = :k2o, cao = :cao, mgo = :mgo, sincronizado = 0 WHERE id = :id"
+    )
+    suspend fun actualizar(
+        id: Long, lote: String, meta: Double, eficiencia: Double,
+        n: Double, p2o5: Double, k2o: Double, cao: Double, mgo: Double
+    )
+
     @Query("SELECT * FROM registros_terreno WHERE id = :id LIMIT 1")
     suspend fun buscar(id: Long): RegistroTerreno?
 
