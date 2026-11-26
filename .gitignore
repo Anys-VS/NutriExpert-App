@@ -22,3 +22,5 @@ local.properties
 keystore.properties
 # APK release generado en Android Studio (se entrega aparte, no va al repo)
 /app/release/
+# Guion personal de la defensa: queda solo en el computador
+PRESENTACION.md
