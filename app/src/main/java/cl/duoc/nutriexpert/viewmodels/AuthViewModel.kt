@@ -1,7 +1,6 @@
 package cl.duoc.nutriexpert.viewmodels
 
 import android.app.Application
-import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cl.duoc.nutriexpert.data.AppDatabase
@@ -20,14 +19,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class AuthViewModel(application: Application) : AndroidViewModel(application) {
-
+// El repositorio llega por constructor con un valor por defecto: la app usa el real
+// (viewModel() sigue funcionando gracias a @JvmOverloads) y las pruebas pasan un mock.
+class AuthViewModel @JvmOverloads constructor(
+    application: Application,
     // Login y registro contra ms-usuarios, con Room como respaldo sin señal.
-    private val repo = AuthRepository(
+    private val repo: AuthRepository = AuthRepository(
         dao = AppDatabase.obtener(application).usuarioDao(),
         api = RetrofitInstance.usuariosApi,
         conectividad = Conectividad(application)
     )
+) : AndroidViewModel(application) {
 
     private val _login = MutableStateFlow(LoginUiState())
     val login: StateFlow<LoginUiState> = _login.asStateFlow()
@@ -189,7 +191,12 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun validarCorreo(correo: String): String? = when {
         correo.isBlank() -> "Ingresa tu correo"
-        !Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches() -> "Correo no válido"
+        !FORMATO_CORREO.matches(correo.trim()) -> "Correo no válido"
         else -> null
+    }
+
+    private companion object {
+        // usuario@dominio.cl — se usa Regex de Kotlin (y no Patterns de Android) para poder probarlo en la JVM.
+        val FORMATO_CORREO = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
     }
 }

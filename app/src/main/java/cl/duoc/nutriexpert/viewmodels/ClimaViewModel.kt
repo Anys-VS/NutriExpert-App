@@ -23,9 +23,10 @@ class ClimaViewModel(private val repository: ClimaRepository) : ViewModel() {
     fun cargarClima() {
         // Evita pedir el clima dos veces al mismo tiempo.
         if (_uiState.value.isLoading) return
+        // Se marca antes de lanzar la corrutina: así una segunda llamada inmediata ya lo ve.
+        _uiState.update { it.copy(isLoading = true, error = null) }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val resultado = repository.obtenerClima()
                 _uiState.update {

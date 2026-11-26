@@ -9,6 +9,7 @@ import cl.duoc.nutriexpert.data.AppDatabase
 import cl.duoc.nutriexpert.data.CatalogoRepository
 import cl.duoc.nutriexpert.data.OrigenCatalogo
 import cl.duoc.nutriexpert.data.RegistroTerreno
+import cl.duoc.nutriexpert.data.RegistroTerrenoDao
 import cl.duoc.nutriexpert.domain.CalculoNutricional
 import cl.duoc.nutriexpert.data.remote.RetrofitInstance
 import cl.duoc.nutriexpert.domain.CultivoReferencia
@@ -23,13 +24,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 
-class CalculoNutricionalViewModel(application: Application) : AndroidViewModel(application) {
+// Room y el catálogo llegan por constructor con valores por defecto: la app usa los reales
+// y las pruebas pasan mocks.
+class CalculoNutricionalViewModel @JvmOverloads constructor(
+    application: Application,
+    private val dao: RegistroTerrenoDao = AppDatabase.obtener(application).registroTerrenoDao(),
+    private val catalogo: CatalogoRepository = CatalogoRepository(
+        AppDatabase.obtener(application).cultivoDao(),
+        RetrofitInstance.catalogoApi
+    )
+) : AndroidViewModel(application) {
     private val _estado = MutableStateFlow(CalculoNutricionalUiState())
     val estado: StateFlow<CalculoNutricionalUiState> = _estado.asStateFlow()
-
-    private val db = AppDatabase.obtener(application)
-    private val dao = db.registroTerrenoDao()
-    private val catalogo = CatalogoRepository(db.cultivoDao(), RetrofitInstance.catalogoApi)
 
     // Cultivos de ms-catalogo (o su copia en Room). Mientras carga se muestran los de ejemplo.
     private val _cultivos = MutableStateFlow(DatosEjemplo.cultivos)

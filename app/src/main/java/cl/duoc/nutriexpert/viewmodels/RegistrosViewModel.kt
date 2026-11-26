@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cl.duoc.nutriexpert.data.AppDatabase
 import cl.duoc.nutriexpert.data.RegistroTerreno
+import cl.duoc.nutriexpert.data.RegistroTerrenoDao
 import cl.duoc.nutriexpert.data.SincronizacionRepository
 import cl.duoc.nutriexpert.data.remote.Conectividad
 import cl.duoc.nutriexpert.data.remote.RetrofitInstance
@@ -19,11 +20,14 @@ import kotlinx.coroutines.sync.Mutex
 // Lista de registros de terreno guardados en el teléfono. La usan el Home y el Historial.
 // También los sincroniza con ms-registros: al abrir la app, al guardar uno nuevo
 // y cada vez que vuelve la señal.
-class RegistrosViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val dao = AppDatabase.obtener(application).registroTerrenoDao()
-    private val sincronizacion = SincronizacionRepository(dao, RetrofitInstance.registrosApi)
-    private val conectividad = Conectividad(application)
+// Dependencias por constructor con valores por defecto: la app usa las reales y las pruebas, mocks.
+class RegistrosViewModel @JvmOverloads constructor(
+    application: Application,
+    private val dao: RegistroTerrenoDao = AppDatabase.obtener(application).registroTerrenoDao(),
+    private val sincronizacion: SincronizacionRepository =
+        SincronizacionRepository(dao, RetrofitInstance.registrosApi),
+    private val conectividad: Conectividad = Conectividad(application)
+) : AndroidViewModel(application) {
 
     private val _registros = MutableStateFlow<List<RegistroTerreno>>(emptyList())
     val registros: StateFlow<List<RegistroTerreno>> = _registros.asStateFlow()
