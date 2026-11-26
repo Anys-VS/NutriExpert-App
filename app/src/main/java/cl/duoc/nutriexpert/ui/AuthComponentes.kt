@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -66,10 +67,15 @@ object ColoresMarca {
     val ChipFondo = Color(0xFFF5F5F0)
     val ChipBorde = Color(0xFF626960)
     val TextoLogo = Color(0xFF153E45) // color del nombre en el SVG del logo
+    val Ambar = Color(0xFF8A5A00) // aviso "datos guardados" del clima
 }
 
 @Composable
-fun EncabezadoMarca(modifier: Modifier = Modifier, onVolver: (() -> Unit)? = null) {
+fun EncabezadoMarca(
+    modifier: Modifier = Modifier,
+    onVolver: (() -> Unit)? = null,
+    conectado: Boolean? = null // si se entrega, se muestra el estado de conexión a la derecha
+) {
     Box(
         modifier
             .fillMaxWidth()
@@ -88,6 +94,30 @@ fun EncabezadoMarca(modifier: Modifier = Modifier, onVolver: (() -> Unit)? = nul
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.Center)
+        )
+        if (conectado != null) {
+            EstadoConexion(conectado, Modifier.align(Alignment.CenterEnd).padding(end = 16.dp))
+        }
+    }
+}
+
+// Punto verde = en línea, punto ámbar = sin conexión.
+@Composable
+private fun EstadoConexion(conectado: Boolean, modifier: Modifier = Modifier) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(8.dp)
+                .background(
+                    if (conectado) Color(0xFF81C784) else Color(0xFFFFC107),
+                    CircleShape
+                )
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = if (conectado) "En línea" else "Sin conexión",
+            color = Color.White,
+            fontSize = 12.sp
         )
     }
 }

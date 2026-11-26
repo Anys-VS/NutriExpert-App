@@ -1,9 +1,6 @@
 package cl.duoc.nutriexpert.ui
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,16 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cl.duoc.nutriexpert.model.ClimaUiState
 import cl.duoc.nutriexpert.model.HomeUiState
 import cl.duoc.nutriexpert.model.RegistroResumen
 import cl.duoc.nutriexpert.ui.theme.NutriExpertTheme
@@ -45,7 +39,9 @@ fun HomeScreen(
     onNuevoRegistro: () -> Unit,
     onVerHistorial: (() -> Unit)? = null,
     onCerrarSesion: (() -> Unit)? = null,
-    onSincronizar: (() -> Unit)? = null
+    onSincronizar: (() -> Unit)? = null,
+    clima: ClimaUiState = ClimaUiState(),
+    onReintentarClima: () -> Unit = {}
 ) {
     Scaffold(
         containerColor = Color.White,
@@ -56,7 +52,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            EncabezadoMarca()
+            EncabezadoMarca(conectado = state.conectado)
 
             LazyColumn(
                 modifier = Modifier
@@ -65,7 +61,14 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
-                    Saludo(state = state, onCerrarSesion = onCerrarSesion, onSincronizar = onSincronizar)
+                    Saludo(state = state, onCerrarSesion = onCerrarSesion)
+                }
+                item {
+                    TarjetaClima(
+                        state = clima,
+                        onReintentar = onReintentarClima,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
                 }
                 item {
                     Column(
@@ -79,13 +82,40 @@ fun HomeScreen(
                     }
                 }
                 item {
-                    Text(
-                        text = "Últimos registros",
-                        color = ColoresMarca.Titulo,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 12.dp)
-                    )
+                    // Título de la sección con el contador de pendientes a la derecha.
+                    Row(
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Últimos registros",
+                            color = ColoresMarca.Titulo,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        when {
+                            state.sincronizando -> Text(
+                                text = "Sincronizando…",
+                                color = ColoresMarca.Subtitulo,
+                                fontSize = 13.sp
+                            )
+                            // Con señal y pendientes se puede enviar a mano a ms-registros.
+                            state.conectado && state.pendientes > 0 && onSincronizar != null ->
+                                TextButton(onClick = onSincronizar) {
+                                    Text(
+                                        "Sincronizar ${state.pendientes}",
+                                        color = ColoresMarca.Verde,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            else -> Text(
+                                text = textoPendientes(state.pendientes),
+                                color = if (state.pendientes > 0) ColoresMarca.Gota else ColoresMarca.Subtitulo,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
                 }
                 if (state.ultimosRegistros.isEmpty()) {
                     item {
@@ -111,15 +141,12 @@ fun HomeScreen(
 }
 
 @Composable
-private fun Saludo(
-    state: HomeUiState,
-    onCerrarSesion: (() -> Unit)?,
-    onSincronizar: (() -> Unit)?
-) {
+private fun Saludo(state: HomeUiState, onCerrarSesion: (() -> Unit)?) {
     Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Hola, ${state.nombre}",
+                // Mayúscula inicial aunque el nombre se haya registrado en minúscula.
+                text = "Hola, ${state.nombre.replaceFirstChar { it.uppercase() }}",
                 color = ColoresMarca.Titulo,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -136,46 +163,7 @@ private fun Saludo(
             color = ColoresMarca.Subtitulo,
             fontSize = 15.sp
         )
-        Spacer(Modifier.height(12.dp))
-        // Todo se guarda primero en el teléfono; con señal se envía solo a ms-registros.
-        if (state.conectado) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ChipEnLinea(
-                    texto = if (state.sincronizando) "Sincronizando…"
-                    else "En línea · ${textoPendientes(state.pendientes)}"
-                )
-                if (state.pendientes > 0 && !state.sincronizando && onSincronizar != null) {
-                    TextButton(onClick = onSincronizar) {
-                        Text("Sincronizar", color = ColoresMarca.Verde, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-        } else {
-            ChipSinConexion(texto = "Sin conexión · ${textoPendientes(state.pendientes)}")
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-}
-
-@Composable
-private fun ChipEnLinea(texto: String) {
-    Surface(
-        shape = RoundedCornerShape(50),
-        color = ColoresMarca.HojaRelleno,
-        border = BorderStroke(1.dp, ColoresMarca.Verde)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                Modifier
-                    .size(10.dp)
-                    .background(ColoresMarca.Verde, CircleShape)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(texto, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = ColoresMarca.Titulo)
-        }
+        Spacer(Modifier.height(4.dp))
     }
 }
 
@@ -215,9 +203,9 @@ private fun nombreRol(rol: String): String = when (rol) {
 }
 
 private fun textoPendientes(n: Int): String = when (n) {
-    0 -> "sin registros pendientes"
-    1 -> "1 registro pendiente"
-    else -> "$n registros pendientes"
+    0 -> "Sin pendientes"
+    1 -> "1 pendiente"
+    else -> "$n pendientes"
 }
 
 @Preview(showBackground = true)
