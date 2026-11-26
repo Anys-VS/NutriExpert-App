@@ -152,6 +152,9 @@ class MainActivity : ComponentActivity() {
                         HistorialScreen(
                             registros = registros,
                             onBorrar = { id -> registrosViewModel.borrar(id) },
+                            onActualizar = { id, lote, meta, eficiencia ->
+                                registrosViewModel.actualizar(id, lote, meta, eficiencia)
+                            },
                             onVolver = { viewModel.popBackStack() }
                         )
                     }

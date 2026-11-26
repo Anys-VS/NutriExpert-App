@@ -5,9 +5,10 @@ import cl.duoc.nutriexpert.data.remote.RegistroDto
 import cl.duoc.nutriexpert.data.remote.RegistrosApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import retrofit2.Response
 import java.io.IOException
 
-// Envía a ms-registros los registros pendientes de Room y los marca como sincronizados.
+// Envía a ms-registros los registros pendientes de Room (nuevos o editados) y los marca como sincronizados.
 // Es seguro reintentar: el servidor no duplica un registro con el mismo usuarioId + idLocal.
 class SincronizacionRepository(
     private val dao: RegistroTerrenoDao,
@@ -19,7 +20,7 @@ class SincronizacionRepository(
         var enviados = 0
         for (registro in dao.pendientes()) {
             val respuesta = try {
-                api.guardar(registro.aDto())
+                enviar(registro)
             } catch (e: IOException) {
                 // Se perdió la conexión: se corta y se reintenta cuando vuelva la señal.
                 Log.i(TAG, "Sin conexión con ms-registros, se reintentará: ${e.message}")
@@ -34,6 +35,14 @@ class SincronizacionRepository(
             }
         }
         enviados
+    }
+
+    // Nuevo (sin idServidor) → POST. Editado (ya tiene idServidor) → PUT.
+    // Si el PUT responde 404 (lo borraron en el servidor), se vuelve a crear con POST.
+    private suspend fun enviar(registro: RegistroTerreno): Response<RegistroDto> {
+        val idServidor = registro.idServidor ?: return api.guardar(registro.aDto())
+        val respuesta = api.actualizar(idServidor, registro.aDto())
+        return if (respuesta.code() == 404) api.guardar(registro.aDto()) else respuesta
     }
 
     // Si el registro ya estaba en el servidor, también se borra allá. Si no hay señal, queda allá.
